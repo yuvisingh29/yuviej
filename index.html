@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>yuviej</title>
+    <style>
+        body {
+            background: #000000;
+            color: #FFFFFF;
+            font-family: Arial;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 50px;
+        }
+
+        textarea,
+        input,
+        button {
+            margin: 10px 0;
+            width: 90%;
+            max-width: 400px;
+            font-family: Arial;
+        }
+
+        #preview,
+        #result {
+            display: flex;
+            justify-content: center;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #preview img,
+        #result img {
+            max-width: 90%;
+            max-height: 600px;
+            border-radius: 20px;
+            margin-top: 10px;
+        }
+
+        #loadingLabel {
+            color: #FFFFFF;
+            display: none;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+
+        #errorLabel {
+            color: #FF5555;
+            font-size: 16px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>yuviej</h2>
+    <textarea id="prompt" rows="3" placeholder="Enter your prompt..."></textarea>
+    <input type="file" id="imageInput" accept="image/*">
+    <div id="preview"></div>
+    <button id="generateBtn" onclick="generateImage()">Submit</button>
+    <div id="loadingLabel">Generating...</div>
+    <div id="result"></div>
+    <div id="errorLabel">No image generated for this prompt.</div>
+
+    <script>
+        const ENCODED_KEY = "QUl6YVN5QmVUQ1N1WDltbTdaeTNrSHY0eGk3Z2tSMUhLeXV3TGNF";
+        const API_KEY = atob(ENCODED_KEY);
+        const MODEL_ID = "gemini-2.5-flash-image-preview";
+        const btn = document.getElementById("generateBtn");
+        const loadingLabel = document.getElementById("loadingLabel");
+        const errorLabel = document.getElementById("errorLabel");
+        const previewDiv = document.getElementById("preview");
+        const resultDiv = document.getElementById("result");
+
+        document.getElementById("imageInput").addEventListener("change", e => {
+            previewDiv.innerHTML = "";
+            const file = e.target.files[0];
+            if (file) {
+                const img = document.createElement("img");
+                img.src = URL.createObjectURL(file);
+                previewDiv.appendChild(img);
+            }
+        });
+
+        async function generateImage() {
+            btn.style.display = "none";
+            loadingLabel.style.display = "block";
+            errorLabel.style.display = "none";
+            resultDiv.innerHTML = "";
+
+            const prompt = document.getElementById("prompt").value;
+            const file = document.getElementById("imageInput").files[0];
+            let parts = [{ text: prompt }];
+            if (file) parts.push({ inlineData: { mimeType: file.type, data: await toBase64(file) } });
+
+            const body = { contents: [{ role: "user", parts }], generationConfig: { responseModalities: ["IMAGE"] } };
+
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent?key=${API_KEY}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+
+                const imgPart = data.candidates?.[0]?.content?.parts.find(p => p.inlineData);
+                if (imgPart) {
+                    const img = document.createElement("img");
+                    img.src = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
+                    resultDiv.appendChild(img);
+                } else {
+                    errorLabel.textContent = "No image generated for this prompt.";
+                    errorLabel.style.display = "block";
+                }
+            } catch (e) {
+                errorLabel.textContent = "Error generating image.";
+                errorLabel.style.display = "block";
+            } finally {
+                loadingLabel.style.display = "none";
+                btn.style.display = "block";
+            }
+        }
+
+        function toBase64(file) {
+            return new Promise(r => {
+                const fr = new FileReader();
+                fr.onload = () => r(fr.result.split(",")[1]);
+                fr.readAsDataURL(file);
+            });
+        }
+    </script>
+</body>
+
+</html>
