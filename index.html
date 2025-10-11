@@ -2,134 +2,325 @@
 <html>
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>yuviej</title>
     <style>
+        :root {
+            --bg: #000;
+            --fg: #fff;
+            --accent: #7dd3fc;
+            --danger: #ff5555;
+            --muted: #9ca3af;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            background: #000000;
-            color: #FFFFFF;
-            font-family: Arial;
+            background: var(--bg);
+            color: var(--fg);
+            font-family: Arial, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding-top: 50px;
+            padding: 40px 16px 80px;
+            line-height: 1.4;
+        }
+
+        h2 {
+            margin: 0 0 16px;
+            font-weight: 700;
+            letter-spacing: .3px;
         }
 
         textarea,
         input,
-        button {
+        button,
+        select {
             margin: 10px 0;
-            width: 90%;
-            max-width: 400px;
-            font-family: Arial;
+            width: 100%;
+            max-width: 520px;
+            font-family: inherit;
+        }
+
+        textarea {
+            min-height: 84px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            border: 1px solid #222;
+            background: #0b0b0b;
+            color: var(--fg);
+            resize: vertical;
+        }
+
+        .controls {
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .u-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .u-row>* {
+            flex: 1 1 auto;
+        }
+
+        #dropzone {
+            width: 100%;
+            max-width: 520px;
+            margin: 10px 0;
+            padding: 16px;
+            border: 2px dashed #222;
+            border-radius: 14px;
+            background: #0b0b0b;
+            text-align: center;
+            color: var(--muted);
+        }
+
+        #dropzone.dragover {
+            border-color: var(--accent);
+            color: var(--fg);
         }
 
         #preview,
         #result {
-            display: flex;
-            justify-content: center;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        #preview img,
-        #result img {
-            max-width: 90%;
-            max-height: 600px;
-            border-radius: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            width: 100%;
+            max-width: 820px;
             margin-top: 10px;
         }
 
+        .thumb {
+            position: relative;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #111;
+            border: 1px solid #1f2937;
+        }
+
+        .thumb img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .thumb button {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: rgba(0, 0, 0, .6);
+            border: 1px solid #333;
+            color: #eee;
+            font-size: 12px;
+            padding: 4px 6px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .thumb button:hover {
+            background: rgba(0, 0, 0, .8);
+        }
+
+        #result img {
+            width: 100%;
+            height: auto;
+            max-height: 720px;
+            border-radius: 20px;
+            border: 1px solid #1f2937;
+        }
+
         #loadingLabel {
-            color: #FFFFFF;
+            color: var(--fg);
             display: none;
             font-size: 16px;
             margin: 10px 0;
         }
 
         #errorLabel {
-            color: #FF5555;
+            color: var(--danger);
             font-size: 16px;
             margin-top: 10px;
             display: none;
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .btn {
+            max-width: 520px;
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: var(--fg);
+            color: #000;
+            border: none;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .btn[disabled] {
+            opacity: .6;
+            cursor: not-allowed;
         }
     </style>
 </head>
 
 <body>
     <h2>yuviej</h2>
-    <textarea id="prompt" rows="3" placeholder="Enter your prompt..."></textarea>
-    <input type="file" id="imageInput" accept="image/*">
+    <div class="controls">
+        <textarea id="prompt" placeholder="Enter your prompt… (describe edits or composition details)"></textarea>
+        <div class="u-row">
+            <input type="file" id="imageInput" accept="image/*" multiple />
+            <select id="aspect">
+                <option value="">Aspect: auto</option>
+                <option value="1:1">1:1</option>
+                <option value="4:3">4:3</option>
+                <option value="3:4">3:4</option>
+                <option value="16:9">16:9</option>
+                <option value="9:16">9:16</option>
+            </select>
+        </div>
+        <div id="dropzone">Drag & drop images here (or use the file picker). You can attach multiple images.</div>
+        <div class="muted" id="countLabel">No files selected.</div>
+    </div>
     <div id="preview"></div>
-    <button id="generateBtn" onclick="generateImage()">Submit</button>
-    <div id="loadingLabel">Generating...</div>
+    <button class="btn" id="generateBtn">Submit</button>
+    <div id="loadingLabel">Generating…</div>
     <div id="result"></div>
     <div id="errorLabel">No image generated for this prompt.</div>
-
     <script>
         const ENCODED_KEY = "QUl6YVN5QmVUQ1N1WDltbTdaeTNrSHY0eGk3Z2tSMUhLeXV3TGNF";
         const API_KEY = atob(ENCODED_KEY);
-        const MODEL_ID = "gemini-2.5-flash-image-preview";
-        const btn = document.getElementById("generateBtn");
-        const loadingLabel = document.getElementById("loadingLabel");
-        const errorLabel = document.getElementById("errorLabel");
-        const previewDiv = document.getElementById("preview");
-        const resultDiv = document.getElementById("result");
-
-        document.getElementById("imageInput").addEventListener("change", e => {
-            previewDiv.innerHTML = "";
-            const file = e.target.files[0];
-            if (file) {
+        const MODEL_ID = "gemini-2.5-flash-image";
+        const els = {
+            input: document.getElementById("imageInput"),
+            dropzone: document.getElementById("dropzone"),
+            preview: document.getElementById("preview"),
+            prompt: document.getElementById("prompt"),
+            aspect: document.getElementById("aspect"),
+            btn: document.getElementById("generateBtn"),
+            loading: document.getElementById("loadingLabel"),
+            error: document.getElementById("errorLabel"),
+            result: document.getElementById("result"),
+            count: document.getElementById("countLabel")
+        };
+        let files = [];
+        els.input.addEventListener("change", e => {
+            files = Array.from(e.target.files || []);
+            renderPreview();
+        });
+        ["dragenter", "dragover"].forEach(evt => {
+            els.dropzone.addEventListener(evt, e => {
+                e.preventDefault();
+                e.stopPropagation();
+                els.dropzone.classList.add("dragover");
+            });
+        });
+        ["dragleave", "drop"].forEach(evt => {
+            els.dropzone.addEventListener(evt, e => {
+                e.preventDefault();
+                e.stopPropagation();
+                els.dropzone.classList.remove("dragover");
+            });
+        });
+        els.dropzone.addEventListener("drop", e => {
+            const dropped = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith("image/"));
+            files = files.concat(dropped);
+            renderPreview();
+        });
+        function renderPreview() {
+            els.preview.innerHTML = "";
+            els.count.textContent = files.length ? `${files.length} image${files.length > 1 ? "s" : ""} selected` : "No files selected.";
+            files.forEach((file, idx) => {
+                const wrap = document.createElement("div");
+                wrap.className = "thumb";
                 const img = document.createElement("img");
                 img.src = URL.createObjectURL(file);
-                previewDiv.appendChild(img);
-            }
-        });
-
+                const removeBtn = document.createElement("button");
+                removeBtn.textContent = "Remove";
+                removeBtn.addEventListener("click", () => {
+                    files.splice(idx, 1);
+                    renderPreview();
+                });
+                wrap.appendChild(img);
+                wrap.appendChild(removeBtn);
+                els.preview.appendChild(wrap);
+            });
+        }
+        document.getElementById("generateBtn").addEventListener("click", generateImage);
         async function generateImage() {
-            btn.style.display = "none";
-            loadingLabel.style.display = "block";
-            errorLabel.style.display = "none";
-            resultDiv.innerHTML = "";
-
-            const prompt = document.getElementById("prompt").value;
-            const file = document.getElementById("imageInput").files[0];
-            let parts = [{ text: prompt }];
-            if (file) parts.push({ inlineData: { mimeType: file.type, data: await toBase64(file) } });
-
-            const body = { contents: [{ role: "user", parts }], generationConfig: { responseModalities: ["IMAGE"] } };
-
+            els.btn.disabled = true;
+            els.loading.style.display = "block";
+            els.error.style.display = "none";
+            els.result.innerHTML = "";
+            const prompt = els.prompt.value?.trim() || "";
+            const aspect = els.aspect.value;
             try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent?key=${API_KEY}`, {
+                const parts = [];
+                if (prompt) parts.push({ text: prompt });
+                if (files.length) {
+                    const encoded = await Promise.all(files.map(toBase64));
+                    encoded.forEach((b64, i) => {
+                        parts.push({ inlineData: { mimeType: files[i].type, data: b64 } });
+                    });
+                }
+                const body = {
+                    contents: [{ role: "user", parts }],
+                    generationConfig: { responseModalities: ["IMAGE"] },
+                    ...(aspect ? { imageGenerationConfig: { aspectRatio: aspect } } : {})
+                };
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:generateContent?key=${API_KEY}`;
+                const res = await fetch(url, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(body)
                 });
                 const data = await res.json();
-
-                const imgPart = data.candidates?.[0]?.content?.parts.find(p => p.inlineData);
-                if (imgPart) {
-                    const img = document.createElement("img");
-                    img.src = `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
-                    resultDiv.appendChild(img);
-                } else {
-                    errorLabel.textContent = "No image generated for this prompt.";
-                    errorLabel.style.display = "block";
+                if (!res.ok) {
+                    const msg = data?.error?.message || JSON.stringify(data);
+                    throw new Error(msg);
                 }
-            } catch (e) {
-                errorLabel.textContent = "Error generating image.";
-                errorLabel.style.display = "block";
+                const imgPart = data?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+                if (imgPart?.inlineData?.data) {
+                    const img = document.createElement("img");
+                    img.alt = "Generated image";
+                    img.src = `data:${imgPart.inlineData.mimeType || 'image/png'};base64,${imgPart.inlineData.data}`;
+                    els.result.appendChild(img);
+                } else {
+                    els.error.textContent = "No image generated for this prompt.";
+                    els.error.style.display = "block";
+                }
+            } catch (err) {
+                console.error(err);
+                els.error.textContent = `Error: ${err.message || 'Unknown error'}`;
+                els.error.style.display = "block";
             } finally {
-                loadingLabel.style.display = "none";
-                btn.style.display = "block";
+                els.loading.style.display = "none";
+                els.btn.disabled = false;
             }
         }
-
         function toBase64(file) {
-            return new Promise(r => {
+            return new Promise((resolve, reject) => {
                 const fr = new FileReader();
-                fr.onload = () => r(fr.result.split(",")[1]);
+                fr.onload = () => {
+                    try {
+                        const b64 = String(fr.result).split(",")[1];
+                        resolve(b64);
+                    } catch (e) {
+                        reject(e);
+                    }
+                };
+                fr.onerror = reject;
                 fr.readAsDataURL(file);
             });
         }
