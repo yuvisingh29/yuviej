@@ -181,8 +181,8 @@
   <div id="preview"></div>
 
   <div class="u-row" style="max-width:520px;width:100%;align-items:center;">
-    <button class="btn" id="generateBtn">Submit (15 variations)</button>
-    <span id="progress" class="pill" style="display:none;">0/15</span>
+    <button class="btn" id="generateBtn">Submit (10 variations)</button>
+    <span id="progress" class="pill" style="display:none;">0/10</span>
   </div>
 
   <div id="loadingLabel">Generating…</div>
@@ -190,7 +190,7 @@
   <div id="errorLabel"></div>
 
   <script>
-    const ENCODED_KEY = "QUl6YVN5QmVUQ1N1WDltbTdaeTNrSHY0eGk3Z2tSMUhLeXV3TGNF";
+    const ENCODED_KEY = "QUl6YVN5RDloVE9JZzR1Qk9wODJlQTl2S21Rem1YYTc4UmtxNTU0";
     const API_KEY = atob(ENCODED_KEY);
     const MODEL_ID = "gemini-2.5-flash-image";
 
@@ -324,7 +324,7 @@
       els.loading.style.display = "block";
       els.error.style.display = "none";
       els.result.innerHTML = "";
-      els.progress.textContent = "0/15";
+      els.progress.textContent = "0/10";
       els.progress.style.display = "inline-block";
 
       const prompt = els.prompt.value?.trim() || "";
@@ -334,7 +334,7 @@
           ? await Promise.all(files.map(async f => ({ b64: await toBase64(f), type: f.type })))
           : [];
 
-        const N = 15;
+        const N = 10;
         let done = 0;
 
         const tasks = Array.from({ length: N }, async () => {
